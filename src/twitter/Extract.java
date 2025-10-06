@@ -3,8 +3,12 @@
  */
 package twitter;
 
+import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Extract consists of methods that extract information from a list of tweets.
@@ -24,7 +28,27 @@ public class Extract {
      *         every tweet in the list.
      */
     public static Timespan getTimespan(List<Tweet> tweets) {
-        throw new RuntimeException("not implemented");
+        // handle empty input defensively
+        if (tweets.isEmpty()) {
+            throw new IllegalArgumentException("tweet list must not be empty");
+        }
+
+        // initialize with first tweet’s timestamp
+        Instant start = tweets.get(0).getTimestamp();
+        Instant end = start;
+
+        // find earliest and latest timestamps
+        for (Tweet t : tweets) {
+            Instant time = t.getTimestamp();
+            if (time.isBefore(start)) {
+                start = time;
+            }
+            if (time.isAfter(end)) {
+                end = time;
+            }
+        }
+
+        return new Timespan(start, end);
     }
 
     /**
@@ -43,7 +67,24 @@ public class Extract {
      *         include a username at most once.
      */
     public static Set<String> getMentionedUsers(List<Tweet> tweets) {
-        throw new RuntimeException("not implemented");
-    }
+        Set<String> mentionedUsers = new HashSet<>();
 
+        // Regular expression to match valid mentions
+        // (?<![A-Za-z0-9_]) ensures the '@' is not part of a longer word
+        // ([A-Za-z0-9_]+) captures the username itself
+        // (?![A-Za-z0-9_]) ensures it is not followed by another valid username char
+        Pattern mentionPattern = Pattern.compile("(?<![A-Za-z0-9_])@([A-Za-z0-9_]+)(?![A-Za-z0-9_])");
+
+        for (Tweet t : tweets) {
+            String text = t.getText();
+            Matcher matcher = mentionPattern.matcher(text);
+            while (matcher.find()) {
+                // usernames are case-insensitive → store lowercase
+                String username = matcher.group(1).toLowerCase();
+                mentionedUsers.add(username);
+            }
+        }
+
+        return mentionedUsers;
+    }
 }
