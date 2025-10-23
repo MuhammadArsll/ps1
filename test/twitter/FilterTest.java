@@ -14,7 +14,7 @@ public class FilterTest {
 
     private static final Tweet tweet1 = new Tweet(1, "alyssa", "is it reasonable to talk about rivest so much?", t1);
     private static final Tweet tweet2 = new Tweet(2, "bbitdiddle", "rivest talk in 30 minutes #hype", t2);
-    private static final Tweet tweet3 = new Tweet(3, "alyssa", "I love programming in Java", t3);
+    private static final Tweet tweet3 = new Tweet(3, "Alyssa", "I love programming in Java", t3);
 
     // --- writtenBy() ---
     @Test

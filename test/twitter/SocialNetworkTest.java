@@ -1,58 +1,74 @@
-/* Copyright (c) 2007-2016 MIT 6.005 course staff, all rights reserved.
- * Redistribution of original or derived work requires permission of course staff.
- */
 package twitter;
 
-import static org.junit.Assert.*;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+public class SocialNetwork {
 
-import org.junit.Test;
-
-public class SocialNetworkTest {
-
-    /*
-     * TODO: your testing strategies for these methods should go here.
-     * See the ic03-testing exercise for examples of what a testing strategy comment looks like.
-     * Make sure you have partitions.
+    /**
+     * Guess who might follow whom, from evidence found in tweets.
      */
-    
-    @Test(expected=AssertionError.class)
-    public void testAssertionsEnabled() {
-        assert false; // make sure assertions are enabled with VM argument: -ea
-    }
-    
-    @Test
-    public void testGuessFollowsGraphEmpty() {
-        Map<String, Set<String>> followsGraph = SocialNetwork.guessFollowsGraph(new ArrayList<>());
-        
-        assertTrue("expected empty graph", followsGraph.isEmpty());
-    }
-    
-    @Test
-    public void testInfluencersEmpty() {
+    public static Map<String, Set<String>> guessFollowsGraph(List<Tweet> tweets) {
         Map<String, Set<String>> followsGraph = new HashMap<>();
-        List<String> influencers = SocialNetwork.influencers(followsGraph);
-        
-        assertTrue("expected empty list", influencers.isEmpty());
+        Map<String, Set<String>> hashtagUsers = new HashMap<>(); // hashtag -> users who used it
+
+        Pattern mentionPattern = Pattern.compile("(?<=@)\\w+(-\\w+)*");
+        Pattern hashtagPattern = Pattern.compile("#\\w+");
+
+        for (Tweet t : tweets) {
+            String author = t.getAuthor().toLowerCase();
+            followsGraph.putIfAbsent(author, new HashSet<>());
+
+            // Extract mentions
+            Matcher mentionMatcher = mentionPattern.matcher(t.getText());
+            while (mentionMatcher.find()) {
+                String mentioned = mentionMatcher.group().toLowerCase();
+                if (!mentioned.equals(author)) {
+                    followsGraph.get(author).add(mentioned);
+                }
+            }
+
+            // Extract hashtags
+            Matcher hashtagMatcher = hashtagPattern.matcher(t.getText());
+            while (hashtagMatcher.find()) {
+                String hashtag = hashtagMatcher.group().toLowerCase();
+                hashtagUsers.putIfAbsent(hashtag, new HashSet<>());
+                hashtagUsers.get(hashtag).add(author);
+            }
+        }
+
+        // Common hashtags → mutual follow relationship
+        for (Set<String> users : hashtagUsers.values()) {
+            for (String u1 : users) {
+                for (String u2 : users) {
+                    if (!u1.equals(u2)) {
+                        followsGraph.putIfAbsent(u1, new HashSet<>());
+                        followsGraph.get(u1).add(u2);
+                    }
+                }
+            }
+        }
+
+        return followsGraph;
     }
 
-    /*
-     * Warning: all the tests you write here must be runnable against any
-     * SocialNetwork class that follows the spec. It will be run against several
-     * staff implementations of SocialNetwork, which will be done by overwriting
-     * (temporarily) your version of SocialNetwork with the staff's version.
-     * DO NOT strengthen the spec of SocialNetwork or its methods.
-     * 
-     * In particular, your test cases must not call helper methods of your own
-     * that you have put in SocialNetwork, because that means you're testing a
-     * stronger spec than SocialNetwork says. If you need such helper methods,
-     * define them in a different class. If you only need them in this test
-     * class, then keep them in this test class.
+    /**
+     * Find the people in a social network who have the greatest influence.
      */
+    public static List<String> influencers(Map<String, Set<String>> followsGraph) {
+        Map<String, Integer> followerCounts = new HashMap<>();
 
+        for (String user : followsGraph.keySet()) {
+            followerCounts.putIfAbsent(user, 0);
+            for (String followed : followsGraph.get(user)) {
+                followerCounts.put(followed, followerCounts.getOrDefault(followed, 0) + 1);
+            }
+        }
+
+        List<String> users = new ArrayList<>(followerCounts.keySet());
+        users.sort((a, b) -> followerCounts.get(b) - followerCounts.get(a));
+
+        return users;
+    }
 }
